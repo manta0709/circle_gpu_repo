@@ -1,5 +1,6 @@
 #pragma once
 #include <opencv2/opencv.hpp>
+#include <random>
 
 struct Data
 {
@@ -10,22 +11,34 @@ struct Data
 class RANSACCircleDetector
 {
 private:
-	std::vector<Data> data;
+	std::mt19937 rng;
+	std::uniform_real_distribution<float> udist;
+
+protected:
+	int iters;
+	float threshold;
+	std::vector<cv::Point2i> data;
+	int mostInliers = 0;
+	std::vector<cv::Point2i> inliers;
+
+	inline int getRandomIndex()
+	{
+		return udist(rng) * data.size() - 1;
+	}
 
 public:
-	RANSACCircleDetector(std::vector<Data>& data) : data(data) {};
+	RANSACCircleDetector() {}
+
+	RANSACCircleDetector(const std::vector<cv::Point2i>& data, const int iters, const float threshold) : data(data), iters(iters), threshold(threshold) {
+		//Init random
+		udist = std::uniform_real_distribution<float>(0.f, 1.f);
+		rng.seed(static_cast<long unsigned int>(time(0)));
+	};
 
 	virtual void detectCircle() = 0;
 
-	std::vector<cv::Mat> getImages()
+	std::vector<cv::Point2i> getInliers() const
 	{
-		std::vector<cv::Mat> images;
-
-		for (Data d : data)
-		{
-			images.push_back(d.img);
-		}
-
-		return images;
+		return inliers;
 	}
 };

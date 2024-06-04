@@ -2,8 +2,11 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <fstream>
+#include "CpuDetector.h"
+#include <chrono>
+#include <iostream>
 
-int img_count = 4;
+constexpr int img_count = 4;
 
 int main()
 {
@@ -32,21 +35,38 @@ int main()
 		input.push_back({ cv::imread("Assets/image" + std::to_string(i) + ".png"), tmpPoints});
 	}
 
+	CpuDetector cpuDetector;
+
+	int i = 1;
 	for (Data d : input)
 	{
-		cv::imshow("image", d.img);
-		cv::waitKey(0);
-	}
+		//cv::imshow("image", d.img);
+		//cv::waitKey(0);
 
-	RANSACCircleDetector detector(input);
+		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-	detector.detectCircle();
+		cpuDetector = CpuDetector(d.points, 1000, 2.f);
+		cpuDetector.detectCircle();
 
-	int i = 0;
-	for (cv::Mat d : detector.getImages())
-	{
-		cv::imshow("image", d);
-		cv::imwrite("Assets/imageDetected_" + std::to_string(i++) + ".jpg", d);
+		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+		std::cout << "CPU run of image " + std::to_string(i) + " took " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microsecoonds" << std::endl;
+
+		for (cv::Point2i p : cpuDetector.getInliers())
+		{
+			cv::circle(d.img, p, 4, { 255, 0, 0 }, 2);
+		}
+
+		//cv::imshow("Circle", d.img);
+		//cv::waitKey(0);
+
+		cv::imwrite("Assets/cpu_circle_" + std::to_string(i) + ".jpg", d.img);
+
+		for (cv::Point2i p : d.points)
+		{
+			cv::circle(d.img, p, 4, { 0, 255, 0 }, 2);
+		}
+		cv::imwrite("Assets/cpu_all_points_" + std::to_string(i++) + ".jpg", d.img);
 	}
 
 	return 0;
